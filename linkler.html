@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><meta name="referrer" content="no-referrer">
+<title>Aile — Linkler</title>
+<style>
+:root{--bg:#fff7ec;--card:#fff;--ink:#2b2b2b;--mut:#6b6b6b;--acc:#e8754a;--ok:#3a9e6b}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;align-items:center;gap:12px;padding:14px 20px;background:#fff;border-bottom:1px solid #eadfce;position:sticky;top:0;z-index:2}
+header h1{margin:0;font-size:1.3rem;flex:1}
+.tabs{display:flex;gap:8px;padding:12px 20px;flex-wrap:wrap}
+.tab{border:2px solid var(--acc);background:#fff;color:var(--acc);border-radius:999px;padding:8px 18px;font-size:1rem;font-weight:700;cursor:pointer}
+.tab.on{background:var(--acc);color:#fff}
+.tab.sub{border-color:#bbb;color:#777}.tab.sub.on{background:#777;color:#fff}
+main{max-width:1000px;margin:0 auto;padding:0 20px 60px}
+.item{display:grid;grid-template-columns:1fr 1.2fr;gap:18px;background:var(--card);border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 1px 4px #0001}
+.note{font-size:1.15rem;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+.meta{color:var(--mut);font-size:.85rem;margin-top:8px}
+.right{display:flex;gap:14px;align-items:center}
+.thumb{width:150px;height:84px;object-fit:cover;border-radius:10px;background:#eee;flex:none}
+.ttl{font-weight:700;font-size:1.05rem;word-break:break-word}.host{color:var(--mut);font-size:.85rem}
+.btn{display:inline-block;border:0;border-radius:12px;padding:12px 22px;font-size:1.1rem;font-weight:800;cursor:pointer;text-decoration:none;color:#fff;background:var(--acc)}
+.btn.ok{background:var(--ok)}.btn.ghost{background:#fff;color:var(--mut);border:2px solid #ccc;font-weight:600;font-size:.95rem;padding:8px 14px}
+.empty{text-align:center;color:var(--mut);padding:60px 0;font-size:1.2rem}
+.pair{max-width:560px;margin:60px auto;background:#fff;border-radius:20px;padding:32px;text-align:center;box-shadow:0 2px 10px #0002}
+.code{font-size:3rem;letter-spacing:.3em;font-weight:900;color:var(--acc);margin:16px 0;font-family:ui-monospace,Consolas,monospace}
+.err{color:#c0392b;margin-top:12px}
+footer{text-align:center;color:var(--mut);font-size:.8rem;padding:24px}
+footer a{color:var(--mut)}
+@media(max-width:700px){.item{grid-template-columns:1fr}.right{flex-wrap:wrap}}
+</style></head>
+<body>
+<div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js"></script>
+<script>
+(function(){
+  var SB_URL="https://gtezkwqkfbuyrerylwsd.supabase.co", SB_KEY="sb_publishable_58_UghyL6fDJqwho5S3GEw_4x57ccBo";
+  var FN=SB_URL+"/functions/v1/pc-pair";
+  var LS="aile_pc_creds";
+  var app=document.getElementById("app");
+  var sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"aile_pc_session"}});
+  var state={tab:"new",child:null,children:[],mine:null,links:[],names:{}};
+
+  function el(tag,attrs,kids){var e=document.createElement(tag);for(var k in (attrs||{})){if(k==="class")e.className=attrs[k];else if(k==="text")e.textContent=attrs[k];else if(k.slice(0,2)==="on")e.addEventListener(k.slice(2),attrs[k]);else e.setAttribute(k,attrs[k]);}(kids||[]).forEach(function(c){if(c)e.appendChild(c);});return e;}
+  function clear(){while(app.firstChild)app.removeChild(app.firstChild);}
+  function fn(body){return fetch(FN,{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){return{s:r.status,j:j};});});}
+  function getCreds(){try{return JSON.parse(localStorage.getItem(LS)||"null");}catch(e){return null;}}
+  function fmt(t){var d=new Date(t);return d.toLocaleDateString("tr-TR",{day:"numeric",month:"long"})+" "+d.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"});}
+  function hostOf(u){try{return new URL(u).hostname.replace(/^www\./,"");}catch(e){return"";}}
+  function safeHttp(u){return typeof u==="string"&&/^https?:\/\//i.test(u);}
+
+  // ---------- eşleştirme ----------
+  function pairScreen(msg){
+    clear();
+    var codeEl=el("div",{class:"code",text:"········"}), info=el("div",{class:"err",text:msg||""});
+    app.appendChild(el("div",{class:"pair"},[
+      el("h1",{text:"Bu bilgisayarı eşleştir"}),
+      el("p",{text:"Anne veya Baba telefonda Aile uygulamasını açıp Aile → PC eşleştir bölümüne bu kodu girsin:"}),
+      codeEl,
+      el("p",{class:"host",text:"Kod 10 dakika geçerli. Eşleşince bu sayfa kendiliğinden açılır."}),info
+    ]));
+    fn({action:"start"}).then(function(r){
+      if(r.s!==200){info.textContent="Kod alınamadı, birazdan yeniden denenecek.";setTimeout(function(){pairScreen();},15000);return;}
+      codeEl.textContent=r.j.code;
+      var t0=Date.now(), iv=setInterval(function(){
+        if(Date.now()-t0>600000){clearInterval(iv);pairScreen("Kodun süresi doldu, yenisi alındı.");return;}
+        fn({action:"poll",code:r.j.code,poll_secret:r.j.poll_secret}).then(function(p){
+          if(p.s===200&&p.j.status==="ok"){clearInterval(iv);localStorage.setItem(LS,JSON.stringify({email:p.j.email,password:p.j.password}));start();}
+          else if(p.s===410){clearInterval(iv);pairScreen("Kodun süresi doldu, yenisi alındı.");}
+        }).catch(function(){});
+      },3000);
+    }).catch(function(){info.textContent="Bağlantı yok. İnterneti kontrol et.";setTimeout(function(){pairScreen();},15000);});
+  }
+
+  // ---------- liste ----------
+  function load(){
+    return Promise.all([
+      sb.from("pc_device").select("child_profile_id,cross_access,name").limit(1),
+      sb.from("profile").select("id,display_name,role").eq("active",true),
+      sb.from("shared_link").select("*").order("created_at",{ascending:false}).limit(300)
+    ]).then(function(r){
+      if(r[0].error||r[2].error)throw(r[0].error||r[2].error);
+      state.mine=(r[0].data||[])[0]||null;
+      var names={};(r[1].data||[]).forEach(function(p){names[p.id]=p.display_name;});state.names=names;
+      state.children=(r[1].data||[]).filter(function(p){return p.role==="cocuk"||p.role==="cocuk_tablet";}).map(function(p){return p.id;});
+      state.links=r[2].data||[];
+      if(!state.child||state.children.indexOf(state.child)<0)state.child=state.mine?state.mine.child_profile_id:state.children[0];
+      render();
+      document.title=(newCount()?"("+newCount()+") ":"")+"Aile — Linkler";
+    });
+  }
+  function newCount(){return state.links.filter(function(l){return !l.watched_at&&l.recipient_profile_id===(state.mine&&state.mine.child_profile_id);}).length;}
+  function setWatched(id,v){return sb.rpc("link_set_watched",{p_id:id,p_watched:v}).then(load);}
+
+  function render(){
+    clear();
+    var head=el("header",{},[el("h1",{text:"Linkler"})]);
+    app.appendChild(head);
+    var tabs=el("div",{class:"tabs"});
+    var kids=state.children.slice().sort(function(a,b){return (a===state.mine.child_profile_id?-1:0)-(b===state.mine.child_profile_id?-1:0);});
+    if(!state.mine.cross_access)kids=[state.mine.child_profile_id];
+    kids.forEach(function(c){
+      var own=c===state.mine.child_profile_id;
+      var n=state.links.filter(function(l){return l.recipient_profile_id===c&&!l.watched_at;}).length;
+      tabs.appendChild(el("button",{class:"tab"+(own?"":" sub")+(state.child===c?" on":""),text:(state.names[c]||"Çocuk")+(n?" ("+n+")":""),onclick:function(){state.child=c;render();}}));
+    });
+    app.appendChild(tabs);
+    var sub=el("div",{class:"tabs"},[
+      el("button",{class:"tab"+(state.tab==="new"?" on":""),text:"Yeni",onclick:function(){state.tab="new";render();}}),
+      el("button",{class:"tab"+(state.tab==="hist"?" on":""),text:"Geçmiş",onclick:function(){state.tab="hist";render();}})
+    ]);
+    app.appendChild(sub);
+    var main=el("main");
+    var list=state.links.filter(function(l){return l.recipient_profile_id===state.child&&(state.tab==="new"?!l.watched_at:!!l.watched_at);});
+    if(!list.length)main.appendChild(el("div",{class:"empty",text:state.tab==="new"?"Şimdilik yeni link yok 🎉":"Geçmiş boş"}));
+    list.forEach(function(l){
+      var left=el("div",{},[el("div",{class:"note",text:l.note||(l.url?"":"")}),el("div",{class:"meta",text:(state.names[l.sender_profile_id]||"")+" · "+fmt(l.created_at)})]);
+      var right=el("div",{class:"right"});
+      if(l.url&&safeHttp(l.url)){
+        if(l.thumb_url&&safeHttp(l.thumb_url))right.appendChild(el("img",{class:"thumb",src:l.thumb_url,alt:"",referrerpolicy:"no-referrer"}));
+        right.appendChild(el("div",{},[el("div",{class:"ttl",text:l.title||hostOf(l.url)}),el("div",{class:"host",text:hostOf(l.url)}),
+          el("div",{style:"margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"},[
+            el("a",{class:"btn",href:l.url,target:"_blank",rel:"noopener noreferrer",text:"Aç"}),
+            state.tab==="new"?el("button",{class:"btn ok",text:"İzledim",onclick:function(){setWatched(l.id,true);}}):el("button",{class:"btn ghost",text:"Geri al",onclick:function(){setWatched(l.id,false);}})
+          ])]));
+      }else{
+        right.appendChild(state.tab==="new"?el("button",{class:"btn ok",text:"Tamam",onclick:function(){setWatched(l.id,true);}}):el("button",{class:"btn ghost",text:"Geri al",onclick:function(){setWatched(l.id,false);}}));
+      }
+      main.appendChild(el("div",{class:"item"},[left,right]));
+    });
+    app.appendChild(main);
+    app.appendChild(el("footer",{},[document.createTextNode("Aile · özel kullanım · "),el("a",{href:"#",text:"Bu bilgisayarın eşleşmesini sıfırla",onclick:function(e){e.preventDefault();if(confirm("Eşleşme silinsin mi? Yeniden eşleştirme gerekir.")){localStorage.removeItem(LS);sb.auth.signOut().then(function(){location.reload();});}}})]));
+  }
+
+  // ---------- başlangıç ----------
+  var started=false;
+  function start(){
+    var c=getCreds();
+    if(!c){pairScreen();return;}
+    sb.auth.signInWithPassword({email:c.email,password:c.password}).then(function(r){
+      if(r.error){
+        if(/invalid|credentials|not found/i.test(r.error.message)){localStorage.removeItem(LS);pairScreen("Eşleşme geçersiz, yeniden eşleştir.");}
+        else{clear();app.appendChild(el("div",{class:"empty",text:"Bağlanılamadı. Birazdan yeniden denenecek."}));setTimeout(start,15000);}
+        return;
+      }
+      return load().then(function(){
+        if(started)return;started=true;
+        sb.channel("links").on("postgres_changes",{event:"*",schema:"public",table:"shared_link"},function(){load();}).subscribe();
+        setInterval(load,60000);               // Realtime düşerse yedek
+        setInterval(function(){sb.rpc("pc_touch");},300000);
+        sb.rpc("pc_touch");
+        document.addEventListener("visibilitychange",function(){if(!document.hidden)load();});
+      });
+    }).catch(function(){clear();app.appendChild(el("div",{class:"empty",text:"Bağlanılamadı. Birazdan yeniden denenecek."}));setTimeout(start,15000);});
+  }
+  start();
+})();
+</script></body></html>

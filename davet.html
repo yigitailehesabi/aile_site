@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><meta name="robots" content="noindex">
+<title>Aile — Davet</title><link rel="stylesheet" href="/style.css">
+<style>
+.step{display:flex;gap:12px;align-items:flex-start;margin:14px 0}
+.n{flex:none;width:28px;height:28px;border-radius:50%;background:#e8754a;color:#fff;display:grid;place-items:center;font-weight:700}
+.btn{display:block;width:100%;box-sizing:border-box;text-align:center;padding:14px;border-radius:12px;background:#e8754a;color:#fff;font-weight:700;text-decoration:none;margin-top:8px}
+.btn.alt{background:#fff;color:#e8754a;border:2px solid #e8754a}
+.muted{color:#6b6b6b;font-size:.9em}
+</style></head>
+<body><main>
+<h1>Aile'ye hoş geldin</h1>
+<div id="bad" class="card" hidden><p>Bu davet bağlantısı eksik veya hatalı. Baba'dan yeni bir davet iste.</p></div>
+<div id="ok" hidden>
+  <div class="card">
+    <div class="step"><div class="n">1</div><div><b>Uygulamayı indir</b><a id="dl" class="btn" href="#">İndir</a></div></div>
+    <div class="step"><div class="n">2</div><div><b>Kur</b><br><span class="muted">İndirme bitince dosyayı aç. Android "bilinmeyen kaynak" izni sorarsa <b>İzin ver</b>'e dokun, sonra <b>Kur</b>'a.</span></div></div>
+    <div class="step"><div class="n">3</div><div><b>Uygulamayı aç ve giriş yap</b><a id="open" class="btn alt" href="#">Uygulamayı aç</a><span class="muted">Kurulum bitince bu sayfaya dön ve bu düğmeye dokun. Bağlantı tek kullanımlıktır.</span></div></div>
+  </div>
+  <p class="muted">Bu bağlantıyı kimseyle paylaşma.</p>
+</div>
+<footer>Aile &middot; özel kullanım</footer>
+</main>
+<script>
+(function(){
+  var ENV={beta:{base:"https://gtezkwqkfbuyrerylwsd.supabase.co",scheme:"aile-beta",pkg:"yigit.aile.beta"}};
+  var p=new URLSearchParams(location.hash.slice(1)), t=p.get("t")||"", e=ENV[p.get("e")||"beta"];
+  if(!e||!/^[A-Za-z0-9_-]{20,128}$/.test(t)){document.getElementById("bad").hidden=false;return;}
+  document.getElementById("ok").hidden=false;
+  document.getElementById("dl").href=e.base+"/functions/v1/invite-install?t="+encodeURIComponent(t);
+  document.getElementById("open").href="intent://davet?t="+encodeURIComponent(t)+"#Intent;scheme="+e.scheme+";package="+e.pkg+";end";
+  history.replaceState(null,"",location.pathname); // jeton adres çubuğundan ve geçmişten silinir
+})();
+</script></body></html>
